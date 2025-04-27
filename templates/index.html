@@ -17,12 +17,12 @@
 
     <h2>Ricerche attive:</h2>
     <ul>
-        {% for i, item in enumerate(searches) %}
+        {% for item in searches %}
             <li>
                 <strong>{{ item.name }}</strong> - 
                 <a href="{{ item.url }}" target="_blank">{{ item.url }}</a> (max {{ item.price }}€)
-                <a href="/edit/{{ i }}">[Modifica]</a>
-                <a href="/delete/{{ i }}">[Elimina]</a>
+                <a href="/edit/{{ loop.index0 }}">[Modifica]</a>
+                <a href="/delete/{{ loop.index0 }}">[Elimina]</a>
             </li>
         {% endfor %}
     </ul>
