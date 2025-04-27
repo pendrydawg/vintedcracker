@@ -1,181 +1,82 @@
-from flask import Flask, render_template_string, request, redirect
+from flask import Flask, render_template, request, redirect
 import os
 import json
 
 app = Flask(__name__)
 
-DATA_FILE = "searches.json"
-last_items = set()
+DB_FILE = "searches.json"
 
-# Carica le ricerche dal file
-def load_searches():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+# Assicurati che il file esista
+if not os.path.exists(DB_FILE):
+    with open(DB_FILE, "w") as f:
+        json.dump([], f)
 
-# Salva le ricerche nel file
-def save_searches(searches):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(searches, f, indent=4)
+@app.route("/", methods=["GET", "POST"])
+def index():
+    try:
+        if request.method == "POST":
+            url = request.form.get("url", "").strip()
+            name = request.form.get("name", "").strip()
+            price = request.form.get("price", "").strip()
 
-HTML_TEMPLATE = """
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VintedCracker Admin</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-dark text-light">
+            if not url or not name or not price:
+                return "Tutti i campi sono obbligatori.", 400
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="/">VintedCracker Admin 🛠️</a>
-  </div>
-</nav>
+            with open(DB_FILE, "r+") as f:
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:
+                    data = []
 
-<div class="container">
-    <div class="row">
-        <div class="col-md-8">
-            <h2>🔍 Ricerche Monitorate:</h2>
-            <table class="table table-dark table-hover table-striped">
-                <thead>
-                    <tr>
-                        <th>Nome Ricerca</th>
-                        <th>Prezzo Max (€)</th>
-                        <th>Azioni</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for nome, dati in ricerche.items() %}
-                    <tr>
-                        <td><a href="{{ dati.url }}" target="_blank" class="link-light text-decoration-underline">{{ nome }}</a></td>
-                        <td>{{ dati.prezzo }}</td>
-                        <td>
-                            <form action="/delete" method="post" style="display:inline;">
-                                <input type="hidden" name="nome" value="{{ nome }}">
-                                <button type="submit" class="btn btn-sm btn-danger">❌ Rimuovi</button>
-                            </form>
-                            <form action="/edit" method="get" style="display:inline;">
-                                <input type="hidden" name="nome" value="{{ nome }}">
-                                <button type="submit" class="btn btn-sm btn-warning">✏️ Modifica</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                data.append({"url": url, "name": name, "price": float(price)})
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f, indent=4)
 
-        <div class="col-md-4">
-            <h2>➕ Aggiungi Nuova Ricerca</h2>
-            <form action="/add" method="post" class="mb-3">
-                <div class="mb-3">
-                    <label class="form-label">Nome Ricerca</label>
-                    <input type="text" name="nome" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Link Vinted</label>
-                    <input type="text" name="url" class="form-control" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Prezzo Max (€)</label>
-                    <input type="number" step="0.01" name="prezzo" class="form-control" required>
-                </div>
-                <button type="submit" class="btn btn-success w-100">✅ Aggiungi</button>
-            </form>
+            return redirect("/")
 
-            <h2>♻️ Resetta Articoli</h2>
-            <form action="/reset" method="post">
-                <button type="submit" class="btn btn-warning w-100">♻️ Resetta Lista</button>
-            </form>
-        </div>
-    </div>
-</div>
+        with open(DB_FILE, "r") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                data = []
+        return render_template("index.html", searches=data)
 
-<footer class="text-center mt-4 mb-2">
-    <p class="text-muted">Made by Pendry - 2025</p>
-</footer>
+    except Exception as e:
+        return f"Internal Error: {str(e)}", 500
 
-</body>
-</html>
-"""
-
-from datetime import datetime
-
-@app.route("/")
-def home():
-    searches = load_searches()
-    return render_template_string(HTML_TEMPLATE, ricerche=searches, year=datetime.now().year)
-
-@app.route("/add", methods=["POST"])
-def add_search():
-    searches = load_searches()
-    nome = request.form["nome"].strip()
-    url = request.form["url"].strip()
-    prezzo = float(request.form["prezzo"].strip())
-    searches[nome] = {"url": url, "prezzo": prezzo}
-    save_searches(searches)
-    return redirect("/")
-
-@app.route("/delete", methods=["POST"])
-def delete_search():
-    searches = load_searches()
-    nome = request.form["nome"].strip()
-    if nome in searches:
-        del searches[nome]
-        save_searches(searches)
-    return redirect("/")
-
-@app.route("/edit", methods=["GET", "POST"])
-def edit_search():
-    searches = load_searches()
-    if request.method == "GET":
-        nome = request.args.get("nome")
-        dati = searches.get(nome, {})
-        return render_template_string("""
-        <html><head><title>Modifica Ricerca</title></head><body class="bg-dark text-light">
-        <div class="container">
-            <h2 class="mt-4">✏️ Modifica Ricerca</h2>
-            <form action="/edit" method="post">
-                <input type="hidden" name="old_nome" value="{{ nome }}">
-                <div class="mb-3">
-                    <label class="form-label">Nuovo Nome</label>
-                    <input type="text" name="new_nome" class="form-control" value="{{ nome }}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Link Vinted</label>
-                    <input type="text" name="url" class="form-control" value="{{ dati.url }}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Prezzo Max (€)</label>
-                    <input type="number" step="0.01" name="prezzo" class="form-control" value="{{ dati.prezzo }}" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100">💾 Salva Modifiche</button>
-            </form>
-            <a href="/" class="btn btn-secondary mt-3">🔙 Torna indietro</a>
-        </div>
-        </body></html>
-        """, nome=nome, dati=dati)
-    else:
-        old_nome = request.form["old_nome"].strip()
-        new_nome = request.form["new_nome"].strip()
-        url = request.form["url"].strip()
-        prezzo = float(request.form["prezzo"].strip())
-
-        if old_nome in searches:
-            del searches[old_nome]
-
-        searches[new_nome] = {"url": url, "prezzo": prezzo}
-        save_searches(searches)
+@app.route("/delete/<int:index>")
+def delete(index):
+    try:
+        with open(DB_FILE, "r+") as f:
+            data = json.load(f)
+            if 0 <= index < len(data):
+                data.pop(index)
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f, indent=4)
         return redirect("/")
+    except Exception as e:
+        return f"Internal Error: {str(e)}", 500
 
-@app.route("/reset", methods=["POST"])
-def reset_last_items():
-    last_items.clear()
-    return redirect("/")
+@app.route("/edit/<int:index>", methods=["GET", "POST"])
+def edit(index):
+    try:
+        with open(DB_FILE, "r+") as f:
+            data = json.load(f)
+            if request.method == "POST":
+                data[index]["url"] = request.form["url"]
+                data[index]["name"] = request.form["name"]
+                data[index]["price"] = float(request.form["price"])
+                f.seek(0)
+                f.truncate()
+                json.dump(data, f, indent=4)
+                return redirect("/")
+            item = data[index]
+        return render_template("edit.html", item=item, index=index)
+    except Exception as e:
+        return f"Internal Error: {str(e)}", 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
