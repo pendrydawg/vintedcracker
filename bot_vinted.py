@@ -11,7 +11,7 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
-ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "0"))  # opzionale: ID tuo Discord per DM
+ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "0"))  # opzionale per DM admin
 VINTED_SEARCH_URLS_RAW = os.getenv("VINTED_SEARCH_URL", "")
 
 intents = discord.Intents.default()
@@ -36,11 +36,12 @@ async def on_ready():
     print(f"✅ Connesso come {bot.user}")
     check_vinted.start()
 
+# /ping
 @bot.command()
 async def ping(ctx):
     await ctx.send("🏓 Pong! Bot operativo ✅")
 
-# 🛰️ Comando /stato
+# /stato
 @bot.command()
 async def stato(ctx):
     uptime = datetime.now(timezone.utc) - last_reset
@@ -50,7 +51,7 @@ async def stato(ctx):
         f"🕒 Online da {uptime.seconds//3600} ore e {(uptime.seconds//60)%60} minuti"
     )
 
-# 🛒 Comando /ultimi
+# /ultimi
 @bot.command()
 async def ultimi(ctx):
     if not last_items:
@@ -59,7 +60,7 @@ async def ultimi(ctx):
 
     response = "🛍️ Ultimi articoli trovati:\n"
     counter = 0
-    for link in list(last_items)[-5:]:  # ultimi 5 articoli
+    for link in list(last_items)[-5:]:
         response += f"🔗 {link}\n"
         counter += 1
         if counter >= 5:
@@ -67,19 +68,19 @@ async def ultimi(ctx):
 
     await ctx.send(response)
 
-# ♻️ Comando /forza-reset
+# /forzareset
 @bot.command()
 async def forzareset(ctx):
     last_items.clear()
     await ctx.send("♻️ Lista articoli resettata manualmente!")
 
-# ➕ Comando /aggiungi url prezzo
+# /aggiungi
 @bot.command()
 async def aggiungi(ctx, url: str, prezzo: float):
     vinted_searches[url.strip()] = prezzo
     await ctx.send(f"✅ Aggiunta ricerca:\n🔗 {url}\n💰 Prezzo massimo: {prezzo:.2f}€")
 
-# 🆘 Comando /comandi
+# /comandi
 @bot.command(name="comandi")
 async def comandi(ctx):
     help_text = (
@@ -88,7 +89,8 @@ async def comandi(ctx):
         "✅ `/stato` ➔ Mostra quante ricerche sono monitorate e da quanto il bot è online.\n"
         "✅ `/ultimi` ➔ Mostra gli ultimi 5 articoli trovati.\n"
         "✅ `/forzareset` ➔ Resetta manualmente la lista articoli monitorati.\n"
-        "✅ `/aggiungi [link] [prezzo]` ➔ Aggiunge una nuova ricerca da monitorare live.\n\n"
+        "✅ `/aggiungi [link] [prezzo]` ➔ Aggiunge una nuova ricerca da monitorare live.\n"
+        "✅ `/test` ➔ Invia un articolo finto di prova.\n\n"
         "**Esempio di `/aggiungi`:**\n"
         "`/aggiungi https://www.vinted.it/catalog?search_text=nike+shox&size_id[]=206&size_id[]=207 50`\n\n"
         "**Note Importanti:**\n"
@@ -98,6 +100,21 @@ async def comandi(ctx):
     )
     await ctx.send(help_text)
 
+# /test - invia articolo finto manualmente
+@bot.command()
+async def test(ctx):
+    channel = bot.get_channel(CHANNEL_ID)
+    embed = discord.Embed(
+        title="🧪 Finto Articolo Nike Shox",
+        description="Prezzo: 49.99€",
+        url="https://www.vinted.it/item-finto-nike-shox"
+    )
+    embed.set_image(url="https://cdn.vinted.net/images/it/auto/finto_nike_shox.jpg")
+    await channel.send(embed=embed)
+    await ctx.send("✅ Articolo finto inviato nel canale per test!")
+    print("🧪 TEST manuale completato con successo.")
+
+# 🔄 Monitoraggio vero su Vinted
 @tasks.loop(minutes=2)
 async def check_vinted():
     global last_items, last_reset, vinted_searches
@@ -109,19 +126,6 @@ async def check_vinted():
         print("♻️ Reset della lista articoli monitorati.")
 
     headers = {"User-Agent": "Mozilla/5.0"}
-
-    # 🧪 TEST: Invia un articolo finto
-    if os.getenv("TEST_MODE", "false").lower() == "true":
-        channel = bot.get_channel(CHANNEL_ID)
-        embed = discord.Embed(
-            title="Finto Articolo Nike Shox",
-            description="Prezzo: 49.99€",
-            url="https://www.vinted.it/item-finto-nike-shox"
-        )
-        embed.set_image(url="https://cdn.vinted.net/images/it/auto/finto_nike_shox.jpg")
-        await channel.send(embed=embed)
-        print("🧪 Test articolo finto inviato.")
-        return
 
     for search_url, max_price in vinted_searches.items():
         try:
