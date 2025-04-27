@@ -37,7 +37,7 @@ async def on_ready():
 
 @bot.command()
 async def ping(ctx):
-    await ctx.send("Pong! Bot operativo ✅")
+    await ctx.send("we be swaggin ✅")
 
 @tasks.loop(minutes=2)
 async def check_vinted():
