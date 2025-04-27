@@ -1,0 +1,9 @@
+[build]
+start = "python bot_vinted.py"
+
+[deploy]
+start = "python bot_vinted.py"
+restart = true
+
+[services.vintedcracker]
+type = "worker"
