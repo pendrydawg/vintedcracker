@@ -11,35 +11,47 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
-DEFAULT_VINTED_URLS = os.getenv("VINTED_SEARCH_URL", "").split(",")
-MAX_PRICE = float(os.getenv("MAX_PRICE", 20))
+VINTED_SEARCH_URLS_RAW = os.getenv("VINTED_SEARCH_URL", "")
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
+# Prepara il dizionario URL -> prezzo massimo
+vinted_searches = {}
+for entry in VINTED_SEARCH_URLS_RAW.split(","):
+    if "=" in entry:
+        try:
+            url, price = entry.split("=")
+            vinted_searches[url.strip()] = float(price.strip())
+        except ValueError:
+            print(f"Errore nel parsing della riga: {entry}")
+
 last_items = set()
 last_reset = datetime.now(timezone.utc)
-vinted_urls = DEFAULT_VINTED_URLS.copy()
 
 @bot.event
+@bot.command()
+async def ping(ctx):
+    await ctx.send("we be trappin ✅")
+
 async def on_ready():
     print(f"Connesso come {bot.user}")
     check_vinted.start()
 
 @tasks.loop(minutes=2)
 async def check_vinted():
-    global last_items, last_reset, vinted_urls
+    global last_items, last_reset, vinted_searches
     channel = bot.get_channel(CHANNEL_ID)
-    
+
     if datetime.now(timezone.utc) - last_reset > timedelta(hours=12):
         last_items.clear()
         last_reset = datetime.now(timezone.utc)
         print("Reset della lista articoli monitorati.")
-    
+
     headers = {"User-Agent": "Mozilla/5.0"}
 
-    for search_url in vinted_urls:
+    for search_url, max_price in vinted_searches.items():
         try:
             response = requests.get(search_url.strip(), headers=headers)
             soup = BeautifulSoup(response.text, "html.parser")
@@ -64,7 +76,7 @@ async def check_vinted():
                     except (ValueError, IndexError):
                         continue
 
-                    if price <= MAX_PRICE and link not in last_items:
+                    if price <= max_price and link not in last_items:
                         new_items.append((link, price, title, image_url))
                         last_items.add(link)
 
@@ -72,20 +84,9 @@ async def check_vinted():
                 embed = discord.Embed(title=title, description=f"Prezzo: {price:.2f}€", url=link)
                 embed.set_image(url=image_url)
                 await channel.send(embed=embed)
+                print(f"Trovato articolo: {title} a {price:.2f}€, link: {link}")
 
         except Exception as e:
             print(f"Errore durante il check su {search_url}: {e}")
-
-@bot.command()
-async def setprice(ctx, price: float):
-    global MAX_PRICE
-    MAX_PRICE = price
-    await ctx.send(f"✅ Prezzo massimo aggiornato a {MAX_PRICE:.2f}€.")
-
-@bot.command()
-async def seturl(ctx, *, urls: str):
-    global vinted_urls
-    vinted_urls = urls.split(",")
-    await ctx.send(f"🔄 URL di ricerca aggiornati.")
 
 bot.run(TOKEN)
