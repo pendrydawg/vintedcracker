@@ -1,7 +1,7 @@
 [
   {
-    "url": "https://www.vinted.it/catalog?price_to=1000",
-    "name": "Test Generale",
+    "name": "Nike Test",
+    "url": "https://www.vinted.it/catalog?search_text=nike&price_to=1000",
     "price": 1000
   }
 ]
