@@ -40,6 +40,45 @@ async def on_ready():
 async def ping(ctx):
     await ctx.send("🏓 Pong! Bot operativo ✅")
 
+# 🛰️ Comando /stato
+@bot.command()
+async def stato(ctx):
+    uptime = datetime.now(timezone.utc) - last_reset
+    await ctx.send(
+        f"✅ Bot operativo\n"
+        f"🔍 Monitorando {len(vinted_searches)} ricerche Vinted\n"
+        f"🕒 Online da {uptime.seconds//3600} ore e {(uptime.seconds//60)%60} minuti"
+    )
+
+# 🛒 Comando /ultimi
+@bot.command()
+async def ultimi(ctx):
+    if not last_items:
+        await ctx.send("⚠️ Nessun articolo recente trovato.")
+        return
+
+    response = "🛍️ Ultimi articoli trovati:\n"
+    counter = 0
+    for link in list(last_items)[-5:]:  # ultimi 5 articoli
+        response += f"🔗 {link}\n"
+        counter += 1
+        if counter >= 5:
+            break
+
+    await ctx.send(response)
+
+# ♻️ Comando /forza-reset
+@bot.command()
+async def forzareset(ctx):
+    last_items.clear()
+    await ctx.send("♻️ Lista articoli resettata manualmente!")
+
+# ➕ Comando /aggiungi url prezzo
+@bot.command()
+async def aggiungi(ctx, url: str, prezzo: float):
+    vinted_searches[url.strip()] = prezzo
+    await ctx.send(f"✅ Aggiunta ricerca:\n🔗 {url}\n💰 Prezzo massimo: {prezzo:.2f}€")
+
 @tasks.loop(minutes=2)
 async def check_vinted():
     global last_items, last_reset, vinted_searches
