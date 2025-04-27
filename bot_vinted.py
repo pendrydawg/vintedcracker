@@ -10,9 +10,11 @@ import json
 
 load_dotenv()
 
+# Legge il token e il canale Discord dagli Environment Variables
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
+# Configura gli intenti del bot
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
@@ -22,7 +24,7 @@ last_reset = datetime.now(timezone.utc)
 
 DATA_FILE = "searches.json"
 
-# Funzione per caricare le ricerche dal file
+# Funzione per caricare le ricerche dal file JSON
 def load_searches():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -42,7 +44,7 @@ async def check_vinted():
     if datetime.now(timezone.utc) - last_reset > timedelta(hours=12):
         last_items.clear()
         last_reset = datetime.now(timezone.utc)
-        print("♻️ Reset della lista articoli monitorati.")
+        print("\u267b\ufe0f Reset della lista articoli monitorati.")
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -60,7 +62,6 @@ async def check_vinted():
                 continue
 
             soup = BeautifulSoup(response.text, "html.parser")
-
             items = soup.find_all("div", class_="feed-grid__item")
 
             print(f"🔍 Trovati {len(items)} articoli per {nome}")
