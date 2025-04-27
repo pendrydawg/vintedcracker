@@ -79,9 +79,9 @@ async def aggiungi(ctx, url: str, prezzo: float):
     vinted_searches[url.strip()] = prezzo
     await ctx.send(f"✅ Aggiunta ricerca:\n🔗 {url}\n💰 Prezzo massimo: {prezzo:.2f}€")
 
-# 🆘 Comando /help
-@bot.command()
-async def help(ctx):
+# 🆘 Comando /comandi
+@bot.command(name="comandi")
+async def comandi(ctx):
     help_text = (
         "🛠️ **Comandi disponibili:**\n\n"
         "✅ `/ping` ➔ Controlla se il bot è operativo.\n"
