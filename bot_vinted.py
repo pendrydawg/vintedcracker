@@ -31,13 +31,13 @@ last_items = set()
 last_reset = datetime.now(timezone.utc)
 
 @bot.event
-@bot.command()
-async def ping(ctx):
-    await ctx.send("we be trappin ✅")
-
 async def on_ready():
     print(f"Connesso come {bot.user}")
     check_vinted.start()
+
+@bot.command()
+async def ping(ctx):
+    await ctx.send("Pong! Bot operativo ✅")
 
 @tasks.loop(minutes=2)
 async def check_vinted():
