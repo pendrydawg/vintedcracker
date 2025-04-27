@@ -1,1 +1,7 @@
-{}
+[
+  {
+    "url": "https://www.vinted.it/catalog?price_to=1000",
+    "name": "Test Generale",
+    "price": 1000
+  }
+]
