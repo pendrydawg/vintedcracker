@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>VintedCracker Admin</title>
+</head>
+<body>
+    <h1>Gestione Ricerche</h1>
+
+    <form method="POST">
+        Nome ricerca: <input type="text" name="name" required><br>
+        URL ricerca: <input type="text" name="url" required><br>
+        Prezzo massimo: <input type="number" name="price" step="0.01" required><br>
+        <button type="submit">Aggiungi</button>
+    </form>
+
+    <h2>Ricerche attive:</h2>
+    <ul>
+        {% for i, item in enumerate(searches) %}
+            <li>
+                <strong>{{ item.name }}</strong> - 
+                <a href="{{ item.url }}" target="_blank">{{ item.url }}</a> (max {{ item.price }}€)
+                <a href="/edit/{{ i }}">[Modifica]</a>
+                <a href="/delete/{{ i }}">[Elimina]</a>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <footer>Made by Pendry - 2025</footer>
+</body>
+</html>

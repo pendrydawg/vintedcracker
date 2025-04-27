@@ -1,0 +1,20 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifica Ricerca</title>
+</head>
+<body>
+    <h1>Modifica Ricerca</h1>
+
+    <form method="POST">
+        Nome ricerca: <input type="text" name="name" value="{{ item.name }}" required><br>
+        URL ricerca: <input type="text" name="url" value="{{ item.url }}" required><br>
+        Prezzo massimo: <input type="number" name="price" step="0.01" value="{{ item.price }}" required><br>
+        <button type="submit">Salva</button>
+    </form>
+
+    <a href="/">Torna alla Home</a>
+</body>
+</html>
