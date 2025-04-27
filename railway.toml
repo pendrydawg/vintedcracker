@@ -1,9 +1,6 @@
 [build]
-start = "python bot_vinted.py"
+builder = "NIXPACKS"
+buildCommand = "pip install -r requirements.txt"
 
-[deploy]
-start = "python bot_vinted.py"
-restart = true
-
-[services.vintedcracker]
-type = "worker"
+[start]
+cmd = "python bot_vinted.py"
