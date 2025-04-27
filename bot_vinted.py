@@ -11,6 +11,7 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "0"))  # opzionale: ID tuo Discord per DM
 VINTED_SEARCH_URLS_RAW = os.getenv("VINTED_SEARCH_URL", "")
 
 intents = discord.Intents.default()
@@ -32,12 +33,12 @@ last_reset = datetime.now(timezone.utc)
 
 @bot.event
 async def on_ready():
-    print(f"Connesso come {bot.user}")
+    print(f"✅ Connesso come {bot.user}")
     check_vinted.start()
 
 @bot.command()
 async def ping(ctx):
-    await ctx.send("we be swaggin ✅")
+    await ctx.send("🏓 Pong! Bot operativo ✅")
 
 @tasks.loop(minutes=2)
 async def check_vinted():
@@ -47,7 +48,7 @@ async def check_vinted():
     if datetime.now(timezone.utc) - last_reset > timedelta(hours=12):
         last_items.clear()
         last_reset = datetime.now(timezone.utc)
-        print("Reset della lista articoli monitorati.")
+        print("♻️ Reset della lista articoli monitorati.")
 
     headers = {"User-Agent": "Mozilla/5.0"}
 
@@ -84,9 +85,14 @@ async def check_vinted():
                 embed = discord.Embed(title=title, description=f"Prezzo: {price:.2f}€", url=link)
                 embed.set_image(url=image_url)
                 await channel.send(embed=embed)
-                print(f"Trovato articolo: {title} a {price:.2f}€, link: {link}")
+                print(f"📦 Trovato: {title} - {price:.2f}€ -> {link}")
+
+                if ADMIN_USER_ID:
+                    user = await bot.fetch_user(ADMIN_USER_ID)
+                    if user:
+                        await user.send(f"📢 Nuovo articolo trovato: [{title}]({link}) a {price:.2f}€")
 
         except Exception as e:
-            print(f"Errore durante il check su {search_url}: {e}")
+            print(f"⚠️ Errore durante il check su {search_url}: {e}")
 
 bot.run(TOKEN)
