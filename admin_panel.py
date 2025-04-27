@@ -1,11 +1,23 @@
 from flask import Flask, render_template_string, request, redirect
 import os
+import json
 
 app = Flask(__name__)
 
-# Nuova struttura: nome ➔ {"url": ..., "prezzo": ...}
-vinted_searches = {}
+DATA_FILE = "searches.json"
 last_items = set()
+
+# Carica le ricerche dal file
+def load_searches():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+# Salva le ricerche nel file
+def save_searches(searches):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(searches, f, indent=4)
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -95,28 +107,34 @@ from datetime import datetime
 
 @app.route("/")
 def home():
-    return render_template_string(HTML_TEMPLATE, ricerche=vinted_searches, year=datetime.now().year)
+    searches = load_searches()
+    return render_template_string(HTML_TEMPLATE, ricerche=searches, year=datetime.now().year)
 
 @app.route("/add", methods=["POST"])
 def add_search():
+    searches = load_searches()
     nome = request.form["nome"].strip()
     url = request.form["url"].strip()
     prezzo = float(request.form["prezzo"].strip())
-    vinted_searches[nome] = {"url": url, "prezzo": prezzo}
+    searches[nome] = {"url": url, "prezzo": prezzo}
+    save_searches(searches)
     return redirect("/")
 
 @app.route("/delete", methods=["POST"])
 def delete_search():
+    searches = load_searches()
     nome = request.form["nome"].strip()
-    if nome in vinted_searches:
-        del vinted_searches[nome]
+    if nome in searches:
+        del searches[nome]
+        save_searches(searches)
     return redirect("/")
 
 @app.route("/edit", methods=["GET", "POST"])
 def edit_search():
+    searches = load_searches()
     if request.method == "GET":
         nome = request.args.get("nome")
-        dati = vinted_searches.get(nome, {})
+        dati = searches.get(nome, {})
         return render_template_string("""
         <html><head><title>Modifica Ricerca</title></head><body class="bg-dark text-light">
         <div class="container">
@@ -147,10 +165,11 @@ def edit_search():
         url = request.form["url"].strip()
         prezzo = float(request.form["prezzo"].strip())
 
-        if old_nome in vinted_searches:
-            del vinted_searches[old_nome]
+        if old_nome in searches:
+            del searches[old_nome]
 
-        vinted_searches[new_nome] = {"url": url, "prezzo": prezzo}
+        searches[new_nome] = {"url": url, "prezzo": prezzo}
+        save_searches(searches)
         return redirect("/")
 
 @app.route("/reset", methods=["POST"])

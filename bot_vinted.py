@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
+import json
 
 load_dotenv()
 
@@ -16,20 +17,17 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
-# Struttura migliorata: nome ➔ {"url": ..., "prezzo": ...}
-vinted_searches = {}
 last_items = set()
 last_reset = datetime.now(timezone.utc)
 
-# Parsing delle environment variables
-VINTED_SEARCH_URLS_RAW = os.getenv("VINTED_SEARCH_URL", "")
-for entry in VINTED_SEARCH_URLS_RAW.split(","):
-    if "=" in entry:
-        try:
-            url, price = entry.split("=")
-            vinted_searches[url.strip()] = float(price.strip())
-        except ValueError:
-            print(f"❗ Errore nel parsing della riga: {entry}")
+DATA_FILE = "searches.json"
+
+# Funzione per caricare le ricerche dal file
+def load_searches():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
 @bot.event
 async def on_ready():
@@ -38,7 +36,7 @@ async def on_ready():
 
 @tasks.loop(minutes=2)
 async def check_vinted():
-    global last_items, last_reset, vinted_searches
+    global last_items, last_reset
     channel = bot.get_channel(CHANNEL_ID)
 
     if datetime.now(timezone.utc) - last_reset > timedelta(hours=12):
@@ -49,6 +47,8 @@ async def check_vinted():
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
+
+    vinted_searches = load_searches()
 
     for nome, dati in vinted_searches.items():
         search_url = dati["url"]
