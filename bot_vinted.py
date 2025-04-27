@@ -5,16 +5,14 @@ import requests
 from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-from datetime import datetime, timedelta, timezone
 import json
+from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
-# Legge il token e il canale Discord dagli Environment Variables
 TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
-# Configura gli intenti del bot
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
@@ -22,18 +20,9 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 last_items = set()
 last_reset = datetime.now(timezone.utc)
 
-DATA_FILE = "searches.json"
-
-# Funzione per caricare le ricerche dal file JSON
-def load_searches():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
 @bot.event
 async def on_ready():
-    print(f"Connesso come {bot.user}")
+    print(f"✅ Bot connesso come {bot.user}")
     check_vinted.start()
 
 @tasks.loop(minutes=2)
@@ -44,27 +33,29 @@ async def check_vinted():
     if datetime.now(timezone.utc) - last_reset > timedelta(hours=12):
         last_items.clear()
         last_reset = datetime.now(timezone.utc)
-        print("\u267b\ufe0f Reset della lista articoli monitorati.")
+        print("♻️ Reset lista articoli monitorati.")
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
+    # Carica le ricerche dal file JSON
+    try:
+        with open("searches.json", "r") as f:
+            searches = json.load(f)
+        print(f"✅ searches.json caricato, {len(searches)} ricerche trovate.")
+    except Exception as e:
+        print(f"❌ Errore caricando searches.json: {e}")
+        return
 
-    vinted_searches = load_searches()
+    headers = {"User-Agent": "Mozilla/5.0"}
 
-    for nome, dati in vinted_searches.items():
-        search_url = dati["url"]
-        max_price = dati["prezzo"]
+    for search in searches:
+        search_url = search["url"]
+        max_price = float(search["price"])
+        print(f"🔍 Controllando URL: {search_url} (max {max_price}€)")
+
         try:
             response = requests.get(search_url.strip(), headers=headers)
-            if response.status_code != 200:
-                print(f"❗ Errore HTTP {response.status_code} su {search_url}")
-                continue
-
             soup = BeautifulSoup(response.text, "html.parser")
             items = soup.find_all("div", class_="feed-grid__item")
-
-            print(f"🔍 Trovati {len(items)} articoli per {nome}")
+            print(f"🔎 Trovati {len(items)} articoli sulla pagina.")
 
             new_items = []
             for item in items:
@@ -77,15 +68,12 @@ async def check_vinted():
                     link = "https://www.vinted.it" + link_tag['href']
                     price_text = price_tag.text.strip().replace("\u20ac", "").replace(",", ".")
                     image_url = img_tag.get("src")
-                    title = title_tag.text.strip() if title_tag else nome
+                    title = title_tag.text.strip() if title_tag else "Articolo Vinted"
 
                     try:
                         price = float(price_text.split()[0])
                     except (ValueError, IndexError):
-                        print(f"❗ Errore parsing prezzo per {link}")
                         continue
-
-                    print(f"➔ Articolo trovato: {title} | Prezzo: {price:.2f}€")
 
                     if price <= max_price and link not in last_items:
                         new_items.append((link, price, title, image_url))
@@ -95,9 +83,9 @@ async def check_vinted():
                 embed = discord.Embed(title=title, description=f"Prezzo: {price:.2f}€", url=link)
                 embed.set_image(url=image_url)
                 await channel.send(embed=embed)
-                print(f"✅ Inviato articolo: {title} ({price:.2f}€)")
+                print(f"✅ Inviato su Discord: {title} - {price:.2f}€")
 
         except Exception as e:
-            print(f"❗ Errore durante il check su {search_url}: {e}")
+            print(f"❌ Errore durante il check su {search_url}: {e}")
 
 bot.run(TOKEN)
