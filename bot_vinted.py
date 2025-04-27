@@ -79,6 +79,25 @@ async def aggiungi(ctx, url: str, prezzo: float):
     vinted_searches[url.strip()] = prezzo
     await ctx.send(f"✅ Aggiunta ricerca:\n🔗 {url}\n💰 Prezzo massimo: {prezzo:.2f}€")
 
+# 🆘 Comando /help
+@bot.command()
+async def help(ctx):
+    help_text = (
+        "🛠️ **Comandi disponibili:**\n\n"
+        "✅ `/ping` ➔ Controlla se il bot è operativo.\n"
+        "✅ `/stato` ➔ Mostra quante ricerche sono monitorate e da quanto il bot è online.\n"
+        "✅ `/ultimi` ➔ Mostra gli ultimi 5 articoli trovati.\n"
+        "✅ `/forzareset` ➔ Resetta manualmente la lista articoli monitorati.\n"
+        "✅ `/aggiungi [link] [prezzo]` ➔ Aggiunge una nuova ricerca da monitorare live.\n\n"
+        "**Esempio di `/aggiungi`:**\n"
+        "`/aggiungi https://www.vinted.it/catalog?search_text=nike+shox&size_id[]=206&size_id[]=207 50`\n\n"
+        "**Note Importanti:**\n"
+        "- Il link deve essere corretto di Vinted.\n"
+        "- Prezzo massimo solo numero (senza € o testo).\n"
+        "- Separa il link e il prezzo con uno spazio.\n"
+    )
+    await ctx.send(help_text)
+
 @tasks.loop(minutes=2)
 async def check_vinted():
     global last_items, last_reset, vinted_searches
@@ -90,6 +109,19 @@ async def check_vinted():
         print("♻️ Reset della lista articoli monitorati.")
 
     headers = {"User-Agent": "Mozilla/5.0"}
+
+    # 🧪 TEST: Invia un articolo finto
+    if os.getenv("TEST_MODE", "false").lower() == "true":
+        channel = bot.get_channel(CHANNEL_ID)
+        embed = discord.Embed(
+            title="Finto Articolo Nike Shox",
+            description="Prezzo: 49.99€",
+            url="https://www.vinted.it/item-finto-nike-shox"
+        )
+        embed.set_image(url="https://cdn.vinted.net/images/it/auto/finto_nike_shox.jpg")
+        await channel.send(embed=embed)
+        print("🧪 Test articolo finto inviato.")
+        return
 
     for search_url, max_price in vinted_searches.items():
         try:
