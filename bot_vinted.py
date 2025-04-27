@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
+import re
+import json
 
 load_dotenv()
 
@@ -14,6 +16,9 @@ CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "0"))  # opzionale per DM admin
 VINTED_SEARCH_URLS_RAW = os.getenv("VINTED_SEARCH_URL", "")
 
+# ⚠️ INSERISCI QUI I TUOI COOKIE VINTED
+ACCESS_TOKEN_WEB = "eyJraWQiOiJFNTdZZHJ1SHBsQWp1MmNObzFEb3JIM2oyN0J1NS1zX09QNVB3UGlobjVNIiwiYWxnIjoiUFMyNTYifQ.eyJhcHBfaWQiOjQsImNsaWVudF9pZCI6IndlYiIsImF1ZCI6ImZyLmNvcmUuYXBpIiwiaXNzIjoidmludGVkLWlhbS1zZXJ2aWNlIiwic3ViIjoiOTY4Nzk0OTkiLCJpYXQiOjE3NDU3NTM2NjMsInNpZCI6ImMxYzFmNzUyLTE3NDU3NTM2NjMiLCJzY29wZSI6InVzZXIiLCJleHAiOjE3NDU3NjA4NjMsInB1cnBvc2UiOiJhY2Nlc3MiLCJsb2dpbl90eXBlIjo0LCJhY3QiOnsic3ViIjoiOTY4Nzk0OTkifSwiYWNjb3VudF9pZCI6Njk2NTY2NzV9.s6RuMsDKcPyRPtily9UuFWNZDDmD17-vPZtPm5Bu39hByry15o5hve7gyFWGKINuhm0xH3iB34HzDWFZskCDElMtHL9_P7nl_JGmWb7hzWKzStAxoRODRE1tvUhRrJUNOs5MjDfGkuPIulg7bO58ERVmACEvC3M4E5mMs1vDnurK0PCUJwbCB5fTRWxewLol9PMvfbZNqT6b1KX4f-g_oRJQxIW-wwCzu6reXMyVS8tDid-JxuXbYnNKzxrPpW_Qz5RYSX1EXc0iKFDSiv8zolvJsHgCDzJZac5YMMbm7GOjjy97qOkcMj1zbpfdsBS4l8dMUcD_OMhg9hmfET3Pag"
+VINTED_SESSION = "a21jeTdrZjlCMzg5dHYxWHlKTEF3eldDOUhnaWdzWHR4UThuenhPLzBSV2N1a3E5Z1hlczM2aGFwbE9QajNndml0bG5uMUVrSjJnOE1WeEF0NHBOTFp5VEhmdStIdGJ0MGtsT3FwSUpMSmM3ZGNGVFBrcEhpQk12Q0JlRUwybDNtSERqcW5PMDJLbVNZcVZ3Tm9WKzZpT2JjRGNXMlUwZmdYQ3VLZ2hRZ0dRQ2RNNnJXWnhja3hEaEQwZ1RDTzk1UXVOMUh0d0ExZmpPTGFaNDhDeTdaYzNFNnIrSUxFQWdLVWE3b1dCSmdLcE9mNEFZeS9ySFhXQVk0aXZReFBac2ZwZ1hpMUdCd1EyT3NqNnFDOGdYQm55RmF2Uk1aWXU0UmNQcmhkRXRXdU9PZHZjT1diQ0g5OVB0WHgwVlBtNmlUSHBUVjdUMEtnaDhFWmtTMUE5VHA1d1VIb1VWeTFUWVNwTFI0Qm9hNWFyYlF5aDBZUjV5SEFNdHZYbXpKQ3JVc3FwUEdxWTUrQ01TcVdxWkxFbW5GbzUzeTI2bXZsUEZSMG9zUUo2cDhHVVB1U3RNaGNqN3R4RDducWNqNElDMXh2LzJIb0FjS3JXcHB3RXRXRXlwc1B4RURoaXBLZnlzT2RNU1ZrelJoWWsySUY3U0NSRmpOdThYN0RUUS9XU0ZnajhjNmlGRUF1ZWVoemc2aTBRbG1DN0dpbUZDeE5jVmxXeEVPaTgySHFRbEdnVXZFT3p6VUErQ2ozVlNXYUdyYkNOdjVzSmlad1pxNkV3bUdZWmxEMnM2bHY1VlhEb1hSMlZFY1hGWGhCV2YvRlFQbzRkTm9Jd2VDK1VNTGZlSS0tTWxzYWYxeHU4dnlwWHduc1EzRzg4UT09"
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
@@ -89,14 +94,8 @@ async def comandi(ctx):
         "✅ `/stato` ➔ Mostra quante ricerche sono monitorate e da quanto il bot è online.\n"
         "✅ `/ultimi` ➔ Mostra gli ultimi 5 articoli trovati.\n"
         "✅ `/forzareset` ➔ Resetta manualmente la lista articoli monitorati.\n"
-        "✅ `/aggiungi [link] [prezzo]` ➔ Aggiunge una nuova ricerca da monitorare live.\n"
-        "✅ `/test` ➔ Invia un articolo finto di prova.\n\n"
-        "**Esempio di `/aggiungi`:**\n"
-        "`/aggiungi https://www.vinted.it/catalog?search_text=nike+shox&size_id[]=206&size_id[]=207 50`\n\n"
-        "**Note Importanti:**\n"
-        "- Il link deve essere corretto di Vinted.\n"
-        "- Prezzo massimo solo numero (senza € o testo).\n"
-        "- Separa il link e il prezzo con uno spazio.\n"
+        "✅ `/aggiungi [link] [prezzo]` ➔ Aggiunge una nuova ricerca live.\n"
+        "✅ `/test` ➔ Invia un articolo finto di prova.\n"
     )
     await ctx.send(help_text)
 
@@ -114,7 +113,51 @@ async def test(ctx):
     await ctx.send("✅ Articolo finto inviato nel canale per test!")
     print("🧪 TEST manuale completato con successo.")
 
-# 🔄 Monitoraggio vero su Vinted
+# 🔥 Funzione per inviare offerta automatica (-40%)
+async def invia_offerta(link, prezzo_originale):
+    cookies = {
+        'access_token_web': ACCESS_TOKEN_WEB,
+        '_vinted_fr_session': VINTED_SESSION,
+    }
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0',
+        'Content-Type': 'application/json',
+        'Authorization': f"Bearer {cookies['access_token_web']}",
+    }
+
+    try:
+        match = re.search(r'/(\d+)-', link)
+        if not match:
+            print(f"⚠️ Errore: impossibile estrarre ID da {link}")
+            return
+        product_id = match.group(1)
+        print(f"🆔 ID prodotto estratto: {product_id}")
+
+        prezzo_offerta = round(prezzo_originale * 0.6, 2)
+
+        payload = {
+            "item_id": int(product_id),
+            "price": prezzo_offerta,
+            "currency": "EUR"
+        }
+
+        response = requests.post(
+            'https://www.vinted.it/api/v2/offers',
+            headers=headers,
+            cookies=cookies,
+            data=json.dumps(payload)
+        )
+
+        if response.status_code == 200:
+            print(f"✅ Offerta inviata con successo per {link} a {prezzo_offerta}€")
+        else:
+            print(f"❌ Errore nell'invio offerta: {response.status_code} - {response.text}")
+
+    except Exception as e:
+        print(f"⚠️ Eccezione durante invio offerta: {e}")
+
+# 🔄 Monitoraggio Vinted ogni 2 minuti
 @tasks.loop(minutes=2)
 async def check_vinted():
     global last_items, last_reset, vinted_searches
@@ -161,11 +204,7 @@ async def check_vinted():
                 embed.set_image(url=image_url)
                 await channel.send(embed=embed)
                 print(f"📦 Trovato: {title} - {price:.2f}€ -> {link}")
-
-                if ADMIN_USER_ID:
-                    user = await bot.fetch_user(ADMIN_USER_ID)
-                    if user:
-                        await user.send(f"📢 Nuovo articolo trovato: [{title}]({link}) a {price:.2f}€")
+                await invia_offerta(link, price)
 
         except Exception as e:
             print(f"⚠️ Errore durante il check su {search_url}: {e}")
